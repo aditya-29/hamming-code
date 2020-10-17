@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 import hamming as Ham
 
+from numpy import sqrt
+from numpy.random import rand, randn
+import random
+
+
 class BPSK:
     def __init__(self, tot_bits, scale = False):
         self.fc = 4000  #seconds
@@ -42,16 +47,17 @@ class BPSK:
         [b12,a12] = signal.ellip(5, 0.5, 60, (2000 * 2 / 80000), btype = 'lowpass', analog = False, output = 'ba')
         output = []
 
-        for wave in waves:
+        for ind, wave in enumerate(waves):
             bandpass_out = signal.filtfilt(b11, a11, wave)
             coherent_demod = bandpass_out * (self.carrier * 2)
             lowpass_out = signal.filtfilt(b12, a12, coherent_demod)
             if plot:
+                subplots_adjust(left  = 0.125, right = 0.9, bottom = 0.1, top = 0.9, wspace = 0.2, hspace = 1)
+                plt.subplot(len(waves),1,ind+1)
                 plt.plot(lowpass_out)
-                plt.title("low pass output")
-                plt.show()
-            
-            detection_bpsk = np.zeros(len(self.t), dtype=np.float32)
+                plt.title("after applying low pass filter {}/{}".format(ind+1, len(waves)))
+                   
+            # detection_bpsk = np.zeros(len(self.t), dtype=np.float32)
             flag = [0 for i in range(self.tot_bits)]
 
             for i in range(self.tot_bits):
@@ -63,20 +69,11 @@ class BPSK:
                     else:
                         flag[i] = 0
             output.append(flag)
+        if plot:    
+            plt.show()
         return output
 
 class AWGN():
-    def awgn1(self,y, snr = 5):
-        snr = 10 ** (snr / 10.0)
-        output = []
-        for i in y:
-            i = np.array(i)
-            xpower = np.sum(i ** 2) / len(i)
-            npower = xpower / snr
-            temp = (np.random.randn(len(i)) * np.sqrt(npower) + i)
-            output.append(temp)
-        return output
-
     def awgn(self, y, snr = 5):
         snr=10.0**(snr/10.0)
         noise_std = 1/sqrt(2*snr)
@@ -92,40 +89,9 @@ class AWGN():
             output.append(rx_symbol)
         return output
 
-from numpy import sqrt
-from numpy.random import rand, randn
-import random
+def subplots_adjust(left, bottom, right, top, wspace, hspace):
+    plt.subplots_adjust(left = left, bottom = bottom, right = right, top = top, wspace = wspace, hspace = hspace)
 
-def plot_ber_snr1(orig_signal, snr, blocksize):
-    N = len(orig_signal)
-    snrindB_range = range(0, snr)
-    ber = [None]*snr
-    awgn = AWGN()
-    bpsk = BPSK(blocksize, scale = False)
-    for i in range(len(orig_signal)):
-        for n in range (0, snr): 
-            no_errors = 0
-            output_noised = awgn.awgn([orig_signal[i]], n)
-            rx_signal = bpsk.demodulate(output_noised)
-            for m in range (0, N):
-                tx_symbol = orig_signal[m]
-                # noise = random.gauss(noise_mean, noise_std)
-                # rx_symbol = tx_symbol + noise
-                rx_symbol = float(rx_signal[0][m])
-                det_symbol = float(2 * (rx_symbol >= 0) - 1)
-                no_errors += 1*(tx_symbol != det_symbol)  
-            ber[n] = no_errors / N
-        
-        print("len of ber :" ,len(ber))
-
-        plt.plot(snrindB_range, ber, 'o-',label='practical')
-        plt.axis([0, 10, 0, 0.1])
-        plt.xlabel('snr(dB)')
-        plt.ylabel('BER')
-        plt.grid(True)
-        plt.title('BPSK Modulation')
-        # plt.legend()
-        plt.show()
 
 
 def plot_ber_snr(input_arr, snr, blocksize):
@@ -133,8 +99,8 @@ def plot_ber_snr(input_arr, snr, blocksize):
     snrindB_range = range(0, snr)
     ber = [None]*snr
     awgn = AWGN()
-    bpsk = BPSK(blocksize)
-    H = Ham.Hamming(blocksize, interlacing = False)
+    bpsk = BPSK(blocksize, scale = False)
+    H = Ham.Hamming(blocksize, interlacing = False, print = False)
     enc_output = H.enc_hamming(input_arr, extended = True)
     carrier, output = bpsk.modulate(enc_output)
     for n in range (0, snr): 
@@ -144,11 +110,9 @@ def plot_ber_snr(input_arr, snr, blocksize):
         decoded = H.dec_hamming(demodulated, extended = True)
         for i in range(len(input_arr)):
             no_errors += 1*(input_arr[i] != decoded[i])
-        print("no errors : ", no_errors)
+        # print("no errors : ", no_errors)
         ber[n] = no_errors / N
     
-    print("len of ber :" ,len(ber))
-    print("ber : ", ber)
     
     plt.plot(snrindB_range, ber, 'o-',label='practical')
     # plt.axis([0, 10, 0, 0.1])

@@ -3,13 +3,14 @@ import math as m
 import os
 
 class Hamming():
-    def __init__(self,block_size, interlacing = True):
+    def __init__(self,block_size, interlacing = True, print=True):
         self.block_size = block_size
         self.divided_arr = []
         self.interlacing = interlacing
         self.usable_bits = None
         self.cal_r_bits()
-
+        self.print = print
+        
     def cal_r_bits(self):
         if self.block_size>>1 == self.block_size-1>>1:
             raise ValueError("the entered block size is not of power of 2")
@@ -57,8 +58,9 @@ class Hamming():
     def divide(self,arr):
         r_bits = self.cal_r_bits()
         self.usable_bits = self.block_size - r_bits - 1
-        print("usable bits : ",self.usable_bits,end = "\n\n")
-        print("({},{}) => Hamming Notation".format(self.block_size-1, self.usable_bits),end = "\n\n")
+        if self.print:
+            print("usable bits : ",self.usable_bits,end = "\n\n")
+            print("({},{}) => Hamming Notation".format(self.block_size-1, self.usable_bits),end = "\n\n")
 
         if len(arr) <= self.usable_bits:
             print("no dividing necessary")
@@ -84,7 +86,8 @@ class Hamming():
         # val = reduce(lambda x,y:x ^ y, [ind for ind, bit in enumerate(arr) if bit])
 
         self.divide(arr)
-        print("divided input      : ",self.divided_arr)
+        if self.print:
+            print("divided input      : ",self.divided_arr)
         for i in range(len(self.divided_arr)):
             no_1 = 0
             val = 0
@@ -120,7 +123,7 @@ class Hamming():
             print("reversing interlacing")
             self.interlace(reverse = True)
         output = []
-        r_bits = int(np.log2(len(arr[0])))
+        # r_bits = int(np.log2(len(arr[0])))
         for i in range(len(arr)):
             no_1 = 0
             val = 0
@@ -141,8 +144,8 @@ class Hamming():
                 print("More than 1 error detected !!!")
                 # return None
                 output.append(arr[i])
-
-        print("decoded output     : ",output)
+        if self.print:
+            print("decoded output     : ",output)
 
         final_output = []
         for i in range(len(arr)):
